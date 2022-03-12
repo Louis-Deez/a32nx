@@ -41,8 +41,7 @@ export class DescentGuidance {
         private observer: VerticalProfileComputationParametersObserver,
         private atmosphericConditions: AtmosphericConditions,
     ) {
-        const { managedDescentSpeed } = this.observer.get();
-        this.speedMargin = new SpeedMargin(managedDescentSpeed);
+        this.speedMargin = new SpeedMargin(this.observer);
 
         this.writeToSimVars();
     }

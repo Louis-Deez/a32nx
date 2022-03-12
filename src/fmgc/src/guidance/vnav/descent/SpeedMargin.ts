@@ -1,9 +1,11 @@
+import { VerticalProfileComputationParametersObserver } from '@fmgc/guidance/vnav/VerticalProfileComputationParameters';
+
 export class SpeedMargin {
     private vmo: Knots = 350;
 
     private mmo: Mach = 0.82;
 
-    constructor(private managedDescentSpeed: Knots) { }
+    constructor(private observer: VerticalProfileComputationParametersObserver) { }
 
     getTarget(indicatedAirspeed: Knots, targetSpeed: Knots): Knots {
         const [lowerMargin, upperMargin] = this.getMargins(targetSpeed);
@@ -21,7 +23,7 @@ export class SpeedMargin {
 
         const mmoAsIas = SimVar.GetGameVarValue('FROM MACH TO KIAS', 'number', this.mmo);
 
-        const distanceToUpperMargin = this.managedDescentSpeed - currentTarget > 1 ? 5 : 20;
+        const distanceToUpperMargin = this.observer.get().managedDescentSpeed - currentTarget > 1 ? 5 : 20;
 
         return [
             Math.max(vmin, Math.min(currentTarget - 20, vmax, this.vmo - 3, mmoAsIas - 0.006)),
