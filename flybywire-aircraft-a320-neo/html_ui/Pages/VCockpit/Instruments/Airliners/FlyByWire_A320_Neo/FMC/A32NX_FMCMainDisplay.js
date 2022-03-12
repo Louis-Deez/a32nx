@@ -1110,8 +1110,9 @@ class FMCMainDisplay extends BaseAirliners {
         if (fcuVerticalMode !== 23) {
             SimVar.SetSimVarValue("L:A32NX_SPEEDS_MANAGED_PFD", "knots", vPfd);
             SimVar.SetSimVarValue("L:A32NX_SPEEDS_MANAGED_ATHR", "knots", Vtap);
-
+        } else {
             Vtap = SimVar.GetSimVarValue("L:A32NX_SPEEDS_MANAGED_ATHR", "knots");
+            // When in DES, we grab the target speed from the simvar, and send it to the AP below
         }
 
         if (this.isAirspeedManaged()) {
