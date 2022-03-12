@@ -14,13 +14,9 @@ export class ConstraintReader {
 
     public descentAltitudeConstraints: DescentAltitudeConstraint[] = [];
 
-    public approachAltitudeConstraints: DescentAltitudeConstraint[] = [];
-
     public climbSpeedConstraints: MaxSpeedConstraint[] = [];
 
     public descentSpeedConstraints: MaxSpeedConstraint[] = [];
-
-    public approachSpeedConstraints: MaxSpeedConstraint[] = [];
 
     public flightPathAngleConstraints: ApproachPathAngleConstraint[] = []
 
@@ -74,15 +70,9 @@ export class ConstraintReader {
                         maxSpeed: leg.metadata.speedConstraint.speed,
                     });
                 }
-            } else if (leg.segment === SegmentType.Arrival) {
+            } else if (leg.segment === SegmentType.Arrival || leg.segment === SegmentType.Approach) {
                 if (this.hasValidDescentAltitudeConstraint(leg)) {
                     this.descentAltitudeConstraints.push({
-                        distanceFromStart: this.totalFlightPlanDistance,
-                        constraint: leg.metadata.altitudeConstraint,
-                    });
-
-                    // We also put descent constraints here, because I noticed that some approaches have their constraints on arrival segments
-                    this.approachAltitudeConstraints.push({
                         distanceFromStart: this.totalFlightPlanDistance,
                         constraint: leg.metadata.altitudeConstraint,
                     });
@@ -90,20 +80,6 @@ export class ConstraintReader {
 
                 if (this.hasValidDescentSpeedConstraint(leg)) {
                     this.descentSpeedConstraints.push({
-                        distanceFromStart: this.totalFlightPlanDistance,
-                        maxSpeed: leg.metadata.speedConstraint.speed,
-                    });
-                }
-            } else if (leg.segment === SegmentType.Approach) {
-                if (this.hasValidDescentAltitudeConstraint(leg)) {
-                    this.approachAltitudeConstraints.push({
-                        distanceFromStart: this.totalFlightPlanDistance,
-                        constraint: leg.metadata.altitudeConstraint,
-                    });
-                }
-
-                if (this.hasValidDescentSpeedConstraint(leg)) {
-                    this.approachSpeedConstraints.push({
                         distanceFromStart: this.totalFlightPlanDistance,
                         maxSpeed: leg.metadata.speedConstraint.speed,
                     });
@@ -181,13 +157,11 @@ export class ConstraintReader {
     resetAltitudeConstraints() {
         this.climbAlitudeConstraints = [];
         this.descentAltitudeConstraints = [];
-        this.approachAltitudeConstraints = [];
     }
 
     resetSpeedConstraints() {
         this.climbSpeedConstraints = [];
         this.descentSpeedConstraints = [];
-        this.approachSpeedConstraints = [];
     }
 
     resetPathAngleConstraints() {

@@ -18,13 +18,9 @@ export abstract class BaseGeometryProfile {
 
     abstract get descentAltitudeConstraints(): DescentAltitudeConstraint[];
 
-    abstract get approachAltitudeConstraints(): DescentAltitudeConstraint[];
-
     abstract get maxClimbSpeedConstraints(): MaxSpeedConstraint[];
 
     abstract get descentSpeedConstraints(): MaxSpeedConstraint[];
-
-    abstract get approachSpeedConstraints(): MaxSpeedConstraint[];
 
     abstract get distanceToPresentPosition(): NauticalMiles;
 

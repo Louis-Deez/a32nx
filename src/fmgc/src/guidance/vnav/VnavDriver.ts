@@ -203,7 +203,7 @@ export class VnavDriver implements GuidanceComponent {
             this.computationParametersObserver.get(),
             this.currentNavGeometryProfile.distanceToPresentPosition,
             this.currentNavGeometryProfile.maxClimbSpeedConstraints,
-            [...this.currentNavGeometryProfile.descentSpeedConstraints, ...this.currentNavGeometryProfile.approachSpeedConstraints],
+            this.currentNavGeometryProfile.descentSpeedConstraints,
         );
 
         if (fromFlightPhase < FmgcFlightPhase.Cruise) {

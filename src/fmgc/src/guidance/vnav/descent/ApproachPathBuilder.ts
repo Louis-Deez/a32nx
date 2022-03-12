@@ -71,7 +71,7 @@ export class ApproachPathBuilder {
     computeApproachPath(profile: NavGeometryProfile, speedProfile: SpeedProfile, estimatedFuelOnBoardAtDestination: number, estimatedSecondsFromPresentAtDestination: number) {
         const { approachSpeed, managedDescentSpeedMach, zeroFuelWeight, tropoPause, destinationAirfieldElevation } = this.observer.get();
 
-        const approachConstraints = profile.approachAltitudeConstraints.slice().reverse();
+        const approachConstraints = profile.descentAltitudeConstraints.slice().reverse();
 
         if (!this.canCompute(profile)) {
             throw new Error('[FMS/VNAV] Cannot compute approach path, make sure to check `canCompute` before calling `computeApproachPath`!');
@@ -79,7 +79,7 @@ export class ApproachPathBuilder {
 
         // Find starting point for computation
         // Use either last constraint with its alt or just place a point wherever the end of the track is
-        const finalAltitude = this.canUseApproachConstraintsAsStartingPoint(profile) ? approachConstraints[0].constraint.altitude1 : destinationAirfieldElevation;
+        const finalAltitude = this.canUseLastAltConstraintAsStartingPoint(profile) ? approachConstraints[0].constraint.altitude1 : destinationAirfieldElevation;
 
         this.addLandingCheckpoint(
             profile,
@@ -204,15 +204,19 @@ export class ApproachPathBuilder {
         }
     }
 
-    canCompute(profile: NavGeometryProfile) {
-        return this.canUseApproachConstraintsAsStartingPoint(profile)
+    canCompute(profile: NavGeometryProfile): boolean {
+        return this.canUseLastAltConstraintAsStartingPoint(profile)
             || Number.isFinite(this.observer.get().destinationAirfieldElevation);
     }
 
-    private canUseApproachConstraintsAsStartingPoint(profile: NavGeometryProfile) {
-        return profile.approachAltitudeConstraints.length >= 1
-            && Math.abs(profile.approachAltitudeConstraints[profile.approachAltitudeConstraints.length - 1].distanceFromStart - profile.totalFlightPlanDistance) < 1
-            && profile.approachAltitudeConstraints[profile.approachAltitudeConstraints.length - 1].constraint.type === AltitudeConstraintType.at;
+    private canUseLastAltConstraintAsStartingPoint(profile: NavGeometryProfile): boolean {
+        if (profile.descentAltitudeConstraints.length < 1) {
+            return false;
+        }
+
+        const lastAltConstraint = profile.descentAltitudeConstraints[profile.descentAltitudeConstraints.length - 1];
+
+        return lastAltConstraint.constraint.type === AltitudeConstraintType.at && Math.abs(lastAltConstraint.distanceFromStart - profile.totalFlightPlanDistance) < 1;
     }
 
     private addCheckpointFromStepBackwards(profile: BaseGeometryProfile, step: StepResults, reason: VerticalCheckpointReason) {
