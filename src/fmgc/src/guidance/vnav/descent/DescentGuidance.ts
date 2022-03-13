@@ -7,14 +7,22 @@ import { VerticalMode } from '@shared/autopilot';
 import { FmgcFlightPhase } from '@shared/flightphase';
 import { SpeedMargin } from './SpeedMargin';
 
-enum DescentGuidanceState {
+enum DescentVerticalGuidanceState {
     InvalidProfile,
     ProvidingGuidance,
     Observing
 }
 
+enum DescentSpeedGuidanceState {
+    NotInDescentPhase,
+    TargetOnly,
+    TargetAndMargins,
+}
+
 export class DescentGuidance {
-    private state: DescentGuidanceState = DescentGuidanceState.InvalidProfile;
+    private verticalState: DescentVerticalGuidanceState = DescentVerticalGuidanceState.InvalidProfile;
+
+    private speedState: DescentSpeedGuidanceState = DescentSpeedGuidanceState.NotInDescentPhase;
 
     private requestedVerticalMode: RequestedVerticalMode = RequestedVerticalMode.None;
 
@@ -50,24 +58,21 @@ export class DescentGuidance {
         this.aircraftToDescentProfileRelation.updateProfile(profile);
 
         if (!this.aircraftToDescentProfileRelation.isValid) {
-            this.changeState(DescentGuidanceState.InvalidProfile);
-            return;
+            this.changeState(DescentVerticalGuidanceState.InvalidProfile);
         }
-
-        this.changeState(DescentGuidanceState.Observing);
     }
 
-    private changeState(newState: DescentGuidanceState) {
-        if (this.state === newState) {
+    private changeState(newState: DescentVerticalGuidanceState) {
+        if (this.verticalState === newState) {
             return;
         }
 
-        if (this.state !== DescentGuidanceState.InvalidProfile && newState === DescentGuidanceState.InvalidProfile) {
+        if (this.verticalState !== DescentVerticalGuidanceState.InvalidProfile && newState === DescentVerticalGuidanceState.InvalidProfile) {
             this.reset();
             this.writeToSimVars();
         }
 
-        this.state = newState;
+        this.verticalState = newState;
     }
 
     private reset() {
@@ -85,19 +90,17 @@ export class DescentGuidance {
             return;
         }
 
-        if ((this.observer.get().fcuVerticalMode === VerticalMode.DES) !== (this.state === DescentGuidanceState.ProvidingGuidance)) {
-            this.changeState(this.state === DescentGuidanceState.ProvidingGuidance ? DescentGuidanceState.Observing : DescentGuidanceState.ProvidingGuidance);
+        if ((this.observer.get().fcuVerticalMode === VerticalMode.DES) !== (this.verticalState === DescentVerticalGuidanceState.ProvidingGuidance)) {
+            this.changeState(this.verticalState === DescentVerticalGuidanceState.ProvidingGuidance ? DescentVerticalGuidanceState.Observing : DescentVerticalGuidanceState.ProvidingGuidance);
         }
+        this.updateSpeedMarginState();
 
+        this.updateSpeedTarget();
+        this.updateSpeedGuidance();
         this.updateLinearDeviation();
 
-        if (this.state === DescentGuidanceState.ProvidingGuidance) {
+        if (this.verticalState === DescentVerticalGuidanceState.ProvidingGuidance) {
             this.updateDesModeGuidance();
-            this.updateSpeedTarget();
-
-            if (Simplane.getAutoPilotAirspeedManaged()) {
-                this.updateSpeedGuidance();
-            }
         }
 
         this.writeToSimVars();
@@ -177,24 +180,52 @@ export class DescentGuidance {
     }
 
     private updateSpeedGuidance() {
-        const { flightPhase } = this.observer.get();
-        const isActive = flightPhase === FmgcFlightPhase.Descent && this.state === DescentGuidanceState.ProvidingGuidance && Simplane.getAutoPilotAirspeedManaged();
-        this.showSpeedMargin = isActive;
-
-        if (!isActive) {
+        if (this.speedState === DescentSpeedGuidanceState.NotInDescentPhase) {
             return;
         }
 
         SimVar.SetSimVarValue('L:A32NX_SPEEDS_MANAGED_PFD', 'knots', this.speedTarget);
 
         const airspeed = this.atmosphericConditions.currentAirspeed;
-        const guidanceTarget = this.speedMargin.getTarget(airspeed, this.speedTarget);
+        const guidanceTarget = this.speedState === DescentSpeedGuidanceState.TargetAndMargins
+            ? this.speedMargin.getTarget(airspeed, this.speedTarget)
+            : this.speedTarget;
         SimVar.SetSimVarValue('L:A32NX_SPEEDS_MANAGED_ATHR', 'knots', guidanceTarget);
 
-        const [lower, upper] = this.speedMargin.getMargins(this.speedTarget);
+        if (this.speedState === DescentSpeedGuidanceState.TargetAndMargins) {
+            const [lower, upper] = this.speedMargin.getMargins(this.speedTarget);
 
-        SimVar.SetSimVarValue('L:A32NX_PFD_SHOW_SPEED_MARGINS', 'boolean', this.showSpeedMargin);
-        SimVar.SetSimVarValue('L:A32NX_PFD_LOWER_SPEED_MARGIN', 'Knots', lower);
-        SimVar.SetSimVarValue('L:A32NX_PFD_UPPER_SPEED_MARGIN', 'Knots', upper);
+            SimVar.SetSimVarValue('L:A32NX_PFD_LOWER_SPEED_MARGIN', 'Knots', lower);
+            SimVar.SetSimVarValue('L:A32NX_PFD_UPPER_SPEED_MARGIN', 'Knots', upper);
+        }
+    }
+
+    private updateSpeedMarginState() {
+        const { flightPhase } = this.observer.get();
+
+        if (flightPhase !== FmgcFlightPhase.Descent) {
+            this.changeSpeedState(DescentSpeedGuidanceState.NotInDescentPhase);
+            return;
+        }
+
+        const shouldShowMargins = this.verticalState === DescentVerticalGuidanceState.ProvidingGuidance && Simplane.getAutoPilotAirspeedManaged();
+        this.changeSpeedState(shouldShowMargins ? DescentSpeedGuidanceState.TargetAndMargins : DescentSpeedGuidanceState.TargetOnly);
+    }
+
+    private changeSpeedState(newState: DescentSpeedGuidanceState) {
+        if (this.speedState === newState) {
+            return;
+        }
+
+        // Hide margins if they were previously visible, but the state changed to literally anything else
+        if (this.speedState === DescentSpeedGuidanceState.TargetAndMargins) {
+            SimVar.SetSimVarValue('L:A32NX_PFD_SHOW_SPEED_MARGINS', 'boolean', false);
+            SimVar.SetSimVarValue('L:A32NX_PFD_LOWER_SPEED_MARGIN', 'Knots', 0);
+            SimVar.SetSimVarValue('L:A32NX_PFD_UPPER_SPEED_MARGIN', 'Knots', 0);
+        } else if (newState === DescentSpeedGuidanceState.TargetAndMargins) {
+            SimVar.SetSimVarValue('L:A32NX_PFD_SHOW_SPEED_MARGINS', 'boolean', true);
+        }
+
+        this.speedState = newState;
     }
 }
