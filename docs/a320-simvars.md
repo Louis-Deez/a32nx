@@ -1607,6 +1607,11 @@ In the variables below, {number} should be replaced with one item in the set: { 
   - Indicates whether the FMS should switch to APPROACH phase.
   - **WARNING:** This is temporary and internal. Do not use.
 
+- A32NX_FM_VNAV_DEBUG_POINT
+    - Nautical miles
+    - Indicates the distance from start at which to draw a debug pseudowaypoint on the ND
+    - **WARNING:** This is only used for testing purposes.
+
 ## Autopilot System
 
 - A32NX_FMA_LATERAL_MODE

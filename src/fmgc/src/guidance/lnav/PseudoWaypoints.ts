@@ -133,7 +133,7 @@ export class PseudoWaypoints implements GuidanceComponent {
                 ident: PWP_SPEED_CHANGE,
                 alongLegIndex,
                 distanceFromLegTermination,
-                efisSymbolFlag: NdSymbolTypeFlags.PwpSpeedChange,
+                efisSymbolFlag: NdSymbolTypeFlags.PwpSpeedChange | NdSymbolTypeFlags.MagentaColor,
                 efisSymbolLla,
                 distanceFromStart: firstSpeedChange,
                 displayedOnMcdu: false,
@@ -170,6 +170,13 @@ export class PseudoWaypoints implements GuidanceComponent {
                     },
                     displayedOnNd: true,
                 });
+            }
+        }
+
+        if (VnavConfig.DEBUG_PROFILE) {
+            const debugPoint = this.createDebugPwp(geometry, wptCount, totalDistance);
+            if (debugPoint) {
+                newPseudoWaypoints.push(debugPoint);
             }
         }
 
@@ -594,5 +601,26 @@ export class PseudoWaypoints implements GuidanceComponent {
         default:
             return undefined;
         }
+    }
+
+    private createDebugPwp(geometry: Geometry, wptCount: number, totalDistance: number): PseudoWaypoint | null {
+        const debugPoint = SimVar.GetSimVarValue('L:A32NX_FM_VNAV_DEBUG_POINT', 'number');
+        const position = PseudoWaypoints.pointFromEndOfPath(geometry, wptCount, totalDistance - debugPoint);
+        if (!position) {
+            return null;
+        }
+
+        const [efisSymbolLla, distanceFromLegTermination, alongLegIndex] = position;
+
+        return {
+            ident: 'DEBUG_POINT',
+            alongLegIndex,
+            distanceFromLegTermination,
+            efisSymbolFlag: NdSymbolTypeFlags.PwpSpeedChange | NdSymbolTypeFlags.CyanColor,
+            efisSymbolLla,
+            distanceFromStart: debugPoint,
+            displayedOnMcdu: false,
+            displayedOnNd: true,
+        };
     }
 }

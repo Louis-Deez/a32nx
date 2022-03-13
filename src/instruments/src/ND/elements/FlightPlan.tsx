@@ -471,7 +471,7 @@ export const SymbolMarker: FC<SymbolMarkerProps> = memo(({ ident, x, y, endX, en
     } else if (type & (NdSymbolTypeFlags.PwpSpeedChange)) {
         showIdent = false;
         elements.push(
-            <circle cx={0} cy={0} r={7} className="Magenta Fill" />,
+            <circle cx={0} cy={0} r={7} className={`${typeFlagToColor(type)} Fill`} />,
         );
     }
 

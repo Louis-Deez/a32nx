@@ -54,6 +54,11 @@ text.Magenta {
   stroke: $display-cyan;
 }
 
+.Cyan.Fill {
+  fill: $display-cyan;
+  stroke: none;
+}
+
 .Cyan text,
 text.Cyan {
   fill: $display-cyan;
