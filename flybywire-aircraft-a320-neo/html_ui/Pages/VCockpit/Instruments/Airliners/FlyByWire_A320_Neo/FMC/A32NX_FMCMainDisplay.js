@@ -1107,7 +1107,7 @@ class FMCMainDisplay extends BaseAirliners {
 
         const fcuVerticalMode = SimVar.GetSimVarValue('L:A32NX_FMA_VERTICAL_MODE', 'Enum');
         // When in DES, the speed target is set by VNAV code
-        if (fcuVerticalMode !== 23) {
+        if (fcuVerticalMode !== 23 && this.flightPhaseManager.phase === FmgcFlightPhases.DESCENT) {
             SimVar.SetSimVarValue("L:A32NX_SPEEDS_MANAGED_PFD", "knots", vPfd);
             SimVar.SetSimVarValue("L:A32NX_SPEEDS_MANAGED_ATHR", "knots", Vtap);
         } else {
