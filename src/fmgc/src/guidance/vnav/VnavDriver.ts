@@ -118,7 +118,7 @@ export class VnavDriver implements GuidanceComponent {
     }
 
     acceptMultipleLegGeometry(geometry: Geometry) {
-        this.constraintReader.extract(geometry, this.guidanceController.activeLegIndex);
+        this.constraintReader.extract(geometry, this.guidanceController.activeLegIndex, this.guidanceController.activeTransIndex, this.computationParametersObserver.get().presentPosition);
 
         this.cruisePathBuilder.update();
 
@@ -128,6 +128,7 @@ export class VnavDriver implements GuidanceComponent {
         this.headingProfile.updateGeometry(this.guidanceController.activeGeometry);
         this.stepCoordinator.updateGeometryProfile(this.currentNavGeometryProfile);
         this.descentGuidance.updateProfile(this.currentNavGeometryProfile);
+        this.guidanceController.pseudoWaypoints.acceptVerticalProfile();
 
         this.version++;
     }
@@ -147,7 +148,12 @@ export class VnavDriver implements GuidanceComponent {
                     console.log('[FMS/VNAV] Computed new vertical profile because of new cruise altitude.');
                 }
 
-                this.constraintReader.extract(this.guidanceController.activeGeometry, this.guidanceController.activeLegIndex);
+                this.constraintReader.extract(
+                    this.guidanceController.activeGeometry,
+                    this.guidanceController.activeLegIndex,
+                    this.guidanceController.activeTransIndex,
+                    this.computationParametersObserver.get().presentPosition,
+                );
                 this.windProfileFactory.updateAircraftDistanceFromStart(this.constraintReader.distanceToPresentPosition);
 
                 this.computeVerticalProfileForMcdu(this.guidanceController.activeGeometry);
@@ -155,6 +161,7 @@ export class VnavDriver implements GuidanceComponent {
 
                 this.stepCoordinator.updateGeometryProfile(this.currentNavGeometryProfile);
                 this.descentGuidance.updateProfile(this.currentNavGeometryProfile);
+                this.guidanceController.pseudoWaypoints.acceptVerticalProfile();
 
                 this.version++;
             }
@@ -240,8 +247,6 @@ export class VnavDriver implements GuidanceComponent {
         this.finishProfileInManagedModes(this.currentNavGeometryProfile, Math.max(FmgcFlightPhase.Takeoff, flightPhase));
 
         this.currentNavGeometryProfile.finalizeProfile();
-
-        this.guidanceController.pseudoWaypoints.acceptVerticalProfile();
 
         console.timeEnd('VNAV computation');
 

@@ -28,33 +28,20 @@ export class ConstraintReader {
         this.reset();
     }
 
-    extract(geometry: Geometry, activeLegIndex: number) {
+    extract(geometry: Geometry, activeLegIndex: number, activeTransIndex: number, ppos: LatLongAlt) {
         this.reset();
-
-        const { legs, transitions } = geometry;
-
-        this.distanceToPresentPosition = -this.flightPlanManager.getDistanceToActiveWaypoint();
 
         const uncategorizedAltitudeConstraints: UncategorizedAltitudeConstraint[] = [];
         const uncategorizedSpeedConstraints: UncategorizedSpeedConstraint[] = [];
 
         for (let i = 0; i < this.flightPlanManager.getWaypointsCount(); i++) {
-            const leg = legs.get(i);
+            const leg = geometry.legs.get(i);
 
             if (!leg) {
                 continue;
             }
 
-            const inboundTransition = transitions.get(i - 1);
-
-            const legDistance = Geometry.completeLegPathLengths(
-                leg, (inboundTransition?.isNull || !inboundTransition?.isComputed) ? null : inboundTransition, transitions.get(i),
-            ).reduce((sum, el) => sum + (!Number.isNaN(el) ? el : 0), 0);
-            this.totalFlightPlanDistance += legDistance;
-
-            if (i <= activeLegIndex) {
-                this.distanceToPresentPosition += legDistance;
-            }
+            this.updateDistanceFromStart(i, geometry, activeLegIndex, activeTransIndex, ppos);
 
             if (leg.segment === SegmentType.Origin || leg.segment === SegmentType.Departure) {
                 if (this.hasValidClimbAltitudeConstraint(leg)) {
@@ -175,5 +162,39 @@ export class ConstraintReader {
 
         this.totalFlightPlanDistance = 0;
         this.distanceToPresentPosition = 0;
+    }
+
+    private updateDistanceFromStart(index: number, geometry: Geometry, activeLegIndex: number, activeTransIndex: number, ppos: LatLongAlt) {
+        const { legs, transitions } = geometry;
+
+        const leg = legs.get(index);
+        const inboundTransition = transitions.get(index - 1);
+        const outboundTransition = transitions.get(index);
+
+        const [inboundLength, legDistance, outboundLength] = Geometry.completeLegPathLengths(
+            leg, (inboundTransition?.isNull || !inboundTransition?.isComputed) ? null : inboundTransition, outboundTransition,
+        );
+
+        const correctedInboundLength = Number.isNaN(inboundLength) ? 0 : inboundLength;
+
+        const totalLegLength = legDistance + correctedInboundLength + outboundLength;
+
+        this.totalFlightPlanDistance += totalLegLength;
+
+        if (index < activeLegIndex) {
+            this.distanceToPresentPosition += totalLegLength;
+        }
+
+        if (index === activeLegIndex) {
+            if (activeTransIndex < 0) {
+                this.distanceToPresentPosition += legDistance + correctedInboundLength - leg.getDistanceToGo(ppos);
+            } else if (activeTransIndex === activeLegIndex) {
+                this.distanceToPresentPosition += legDistance + correctedInboundLength - outboundTransition.getDistanceToGo(ppos) - outboundLength;
+            } else if (activeTransIndex === activeLegIndex - 1) {
+                this.distanceToPresentPosition += correctedInboundLength - inboundTransition.getDistanceToGo(ppos);
+            } else {
+                console.error(`[FMS/VNAV] Unexpected transition index (legIndex: ${activeLegIndex}, transIndex: ${activeTransIndex})`);
+            }
+        }
     }
 }
