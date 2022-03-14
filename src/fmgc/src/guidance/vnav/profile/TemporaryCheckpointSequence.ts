@@ -39,7 +39,7 @@ export class TemporaryCheckpointSequence {
         this.checkpoints.push({
             reason,
             distanceFromStart: this.lastCheckpoint.distanceFromStart + step.distanceTraveled,
-            altitude: step.initialAltitude,
+            altitude: step.finalAltitude,
             secondsFromPresent: this.lastCheckpoint.secondsFromPresent + step.timeElapsed,
             remainingFuelOnBoard: this.lastCheckpoint.remainingFuelOnBoard - step.fuelBurned,
             speed: step.speed,
