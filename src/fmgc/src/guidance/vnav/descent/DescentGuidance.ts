@@ -161,11 +161,11 @@ export class DescentGuidance {
     }
 
     private updateSpeedTarget() {
-        const { fcuSpeed } = this.observer.get();
+        const { fcuSpeed, managedDescentSpeedMach } = this.observer.get();
         const inManagedSpeed = Simplane.getAutoPilotAirspeedManaged();
 
         this.speedTarget = inManagedSpeed
-            ? Math.round(this.aircraftToDescentProfileRelation.currentTargetSpeed())
+            ? Math.round(this.iasOrMach(this.aircraftToDescentProfileRelation.currentTargetSpeed(), managedDescentSpeedMach))
             : fcuSpeed;
     }
 
@@ -227,5 +227,15 @@ export class DescentGuidance {
         }
 
         this.speedState = newState;
+    }
+
+    private iasOrMach(ias: Knots, mach: Mach) {
+        const machAsIas = SimVar.GetGameVarValue('FROM MACH TO KIAS', 'number', mach);
+
+        if (ias > machAsIas) {
+            return machAsIas;
+        }
+
+        return ias;
     }
 }
